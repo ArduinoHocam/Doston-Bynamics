@@ -1,0 +1,97 @@
+#include <Servo.h>  // kütüphane servo için include ettim
+#include <PID_v1.h>
+Servo myservo;
+//motor driver pinleri
+const int IN1 = 6;
+const int IN2 = 7;  
+const int enA = 5;
+const int handShakeStop = 8; //handshake den gelen stop
+const int switchPin = 4;
+volatile boolean collisionFlag = false;
+uint8_t motor_speed = 200;//uint8_t motor_speed = 200;
+uint8_t dummy = 0;
+uint8_t counter = 0;
+double Setpoint;
+double Input;
+double Output,mapped_output;
+double Kp=2.15, Ki=0.3, Kd=0.5;//Kp=1.9, Ki=0.3, Kd=0.45;
+
+PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, P_ON_M, DIRECT);
+
+int degree[3];
+int degreeInt=0 ;
+int final_degree;
+char inByte;
+uint8_t switchState = 0;
+uint8_t handstop = 0;
+void setup() { //setup kısmı pin assignment ve 1 kere çalıştırılacak 
+
+  Serial.begin(9600);
+  myservo.attach(9); 
+  Setpoint = 0;
+  myPID.SetMode(AUTOMATIC);
+  //motor sürücü pinleri output olarak tanımladık.
+  pinMode(IN1, OUTPUT); 
+  pinMode(IN2, OUTPUT);  
+  pinMode(enA, OUTPUT);
+
+  pinMode(switchPin, INPUT);
+  pinMode(handShakeStop, INPUT);
+  
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN1, LOW);
+  attachInterrupt(0,collisionAvoid,RISING);//D2 pini
+  pinMode(2,INPUT);//interrupt pini
+}
+
+void loop() { 
+switchState = digitalRead(switchPin);
+handstop    = digitalRead(handShakeStop);
+  if((switchState == 1 && collisionFlag !=true) || handstop == 0 ){
+    digitalWrite(IN2, HIGH);
+    digitalWrite(IN1, LOW);
+    if (Serial.available() >= 3) { // e
+              // read the incoming byte:
+          for(int i =0; i<3;i++){  
+           degree[i] = Serial.read();
+          }
+          final_degree = degree[0]*100 + degree[1]*10 + degree[2];
+          final_degree -=60;                 
+          Input = final_degree;
+           
+    }
+     if(counter<=40) {
+      counter = counter +2;
+      Kp=1.10, Ki=0.13, Kd=0.25;
+      motor_speed = 100;
+     }
+     else if(counter > 40) {
+      motor_speed = 200;
+      Kp=2.15, Ki=0.3, Kd=0.5;
+     }
+     
+     myPID.Compute();
+     mapped_output = map(Output,-127,127,138,54); 
+     myservo.write(mapped_output);
+     analogWrite(enA,  motor_speed);       
+     delay(1);       
+          
+  }
+  else { //ENGINE OFF 
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN1, LOW);
+    if(switchState == LOW) { 
+      myPID.SetMode(AUTOMATIC);
+      myPID.SetControllerDirection(REVERSE); 
+    }
+   dummy = digitalRead(2);
+   if(dummy == LOW) {
+    collisionFlag = false;
+   }
+  }
+    
+}//loop end
+
+void collisionAvoid () {
+ collisionFlag = true;
+}
