@@ -17,7 +17,7 @@ double Output,mapped_output;
 double Kp=2.15, Ki=0.3, Kd=0.5;//Kp=1.9, Ki=0.3, Kd=0.45;
 int out2 = 0;
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, P_ON_M, DIRECT);
-
+volatile boolean finalStop = false;
 int degree[3];
 int degreeInt=0 ;
 int final_degree;
@@ -47,7 +47,8 @@ void setup() { //setup kısmı pin assignment ve 1 kere çalıştırılacak
 void loop() { 
 switchState = digitalRead(switchPin);
 handstop    = digitalRead(handShakeStop);
-  if((switchState == 1 && collisionFlag !=true) || handstop == 0 ){
+if(handstop == 0 && finalStop == false ){ 
+  if(switchState == 1 && collisionFlag !=true ){
     digitalWrite(IN2, HIGH);
     digitalWrite(IN1, LOW);
     if (Serial.available() >= 3) { // e
@@ -95,7 +96,13 @@ handstop    = digitalRead(handShakeStop);
     collisionFlag = false;
    }
   }
-    
+}
+else { // handshake stop
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN1, LOW);
+    finalStop = true; 
+}
+
 }//loop end
 
 void collisionAvoid () {
