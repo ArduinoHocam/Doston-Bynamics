@@ -1,4 +1,4 @@
-﻿//this document prepared for tutorial purpose.
+﻿//This is for the 
 #include <Servo.h>  // kütüphane servo için include ettim
 #include <PID_v1.h>
 Servo myservo;
